@@ -1,0 +1,40 @@
+ISO = "ubuntu/jammy64"
+NET = "192.168.50."
+HOST_NAME = "korchaginvagrant"
+BASE_SSH_PORT = 20010
+BASE_IP_OFFSET = 5
+
+# Общие параметры для всех машин
+VM_CONFIG = {
+  ram: 1024,
+  core: 1,
+  ssh_vm_port: 22,
+  synced_folder_enabled: false  # Отключение синхронизации для повышения производительности
+}
+
+# Количество виртуальных машин
+VM_COUNT = 4
+
+Vagrant.configure(2) do |config|
+  # Настройка общей синхронизации папки, если нужно
+  config.vm.synced_folder ".", "/vagrant", disabled: VM_CONFIG[:synced_folder_enabled]
+
+  (1..VM_COUNT).each do |i|
+    machine_name = "#{HOST_NAME}#{i}"
+    machine_ip = "#{NET}#{BASE_IP_OFFSET + i}"
+    ssh_port = BASE_SSH_PORT + i
+
+    config.vm.define machine_name do |node|
+      node.vm.box = ISO
+      node.vm.hostname = machine_name
+      node.vm.network "private_network", ip: machine_ip
+      node.vm.network :forwarded_port, guest: VM_CONFIG[:ssh_vm_port], host: ssh_port
+      
+      node.vm.provider "virtualbox" do |vb|
+        vb.customize ["modifyvm", :id, "--memory", VM_CONFIG[:ram]]
+        vb.customize ["modifyvm", :id, "--cpus", VM_CONFIG[:core]]
+        vb.name = machine_name
+      end
+    end
+  end
+end
